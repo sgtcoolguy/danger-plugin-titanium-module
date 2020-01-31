@@ -36,7 +36,7 @@ describe("lint()", () => {
     global.markdown = undefined
   })
 
-  it("does not lint anything when no files in PR", async () => {
+  it("no warnings or erros for correct project", async () => {
     global.danger = {
       github: { pr: { title: "Test" } },
       git: { created_files: [], modified_files: [] },
@@ -49,7 +49,7 @@ describe("lint()", () => {
     expect(global.fail).not.toHaveBeenCalled()
   })
 
-  it("flags if android/manifest doesn't exist", async () => {
+  it("fails if android/manifest doesn't exist", async () => {
     global.danger = {
       github: { pr: { title: "Test" } },
       git: {
@@ -68,7 +68,7 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenLastCalledWith("android/manifest does not exist")
   })
 
-  it("flags if ios/manifest doesn't exist", async () => {
+  it("fails if ios/manifest doesn't exist", async () => {
     global.danger = {
       github: { pr: { title: "Test" } },
       git: {
@@ -115,7 +115,7 @@ describe("lint()", () => {
     expect(global.fail).not.toHaveBeenCalled()
   })
 
-  it("flags when android/manifest version changes PATCH but package.json hasn't changed at all", async () => {
+  it("fails when android/manifest version changes PATCH but package.json hasn't changed at all", async () => {
     global.danger = {
       github: {
         pr: { title: "Test" },
@@ -138,7 +138,7 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenLastCalledWith("version bump was Patch in android/manifest but None in package.json")
   })
 
-  it("flags when android/manifest version change and package.json change are not equivalent levels", async () => {
+  it("fails when android/manifest version change and package.json change are not equivalent levels", async () => {
     global.danger = {
       github: {
         pr: { title: "Test" },
@@ -167,7 +167,7 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenLastCalledWith("version bump was Major in android/manifest but Minor in package.json")
   })
 
-  it("flags when android/manifest minsdk changes and version wasn't bumped", async () => {
+  it("fails when android/manifest minsdk changes and version wasn't bumped", async () => {
     global.danger = {
       github: {
         pr: { title: "Test" },
@@ -190,7 +190,7 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenLastCalledWith("version bump was None in android/manifest but should be Major, due to updated minsdk")
   })
 
-  it("flags when android/manifest minsdk changes and version wasn't bumped Major", async () => {
+  it("fails when android/manifest minsdk changes and version wasn't bumped Major", async () => {
     global.danger = {
       github: {
         pr: { title: "Test" },
@@ -219,7 +219,7 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenLastCalledWith("version bump was Minor in android/manifest but should be Major, due to updated minsdk")
   })
 
-  it("flags when ios/manifest has incorrect platform value", async () => {
+  it("fails when ios/manifest has incorrect platform value", async () => {
     global.danger = {
       github: {
         pr: { title: "Test" },
@@ -242,7 +242,7 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenLastCalledWith("platform value was android in ios/manifest but should be iphone")
   })
 
-  it("flags when moduleid is different across platforms", async () => {
+  it("fails when moduleid is different across platforms", async () => {
     global.danger = {
       github: {
         pr: { title: "Test" },
@@ -261,7 +261,7 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenLastCalledWith("moduleid is inconsistent across platforms. It is ti.example.android in android/manifest and ti.example.iphone in ios/manifest")
   })
 
-  it("flags when guid is different across platforms", async () => {
+  it("warns when guid is different across platforms", async () => {
     global.danger = {
       github: {
         pr: { title: "Test" },
@@ -276,7 +276,122 @@ describe("lint()", () => {
       moduleRoot: path.join(__dirname, '../fixtures/guid_differs')
     })
 
+    expect(global.warn).toHaveBeenCalledTimes(1)
+    expect(global.warn).toHaveBeenLastCalledWith("guid is inconsistent across platforms. It is c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0 in android/manifest and c3d987a8-8bd4-42cd-a3e4-2a75952d1ea1 in ios/manifest")
+  })
+
+  it("warns when no declared sdkVersion in Jenkinsfile", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: ['Jenkinsfile'],
+        diffForFile: mockDiff(
+          "library 'pipeline-library'\nbuildModule {\n}\n",
+          "library 'pipeline-library'\nbuildModule {\n}\n",
+        )
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, '../fixtures/typical')
+    })
+
+    expect(global.warn).toHaveBeenCalledTimes(1)
+    expect(global.warn).toHaveBeenLastCalledWith("Was unable to determine SDK version used to build on Jenkins. Consider adding sdkVersion = '9.0.0' (or greater)")
+  })
+
+  it("fails when declared sdkVersion in Jenkinsfile is less than minSDK", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: ['Jenkinsfile'],
+        diffForFile: mockDiff(
+          "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '8.3.1.GA'\n}\n",
+          "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '8.3.1.GA'\n}\n",
+        )
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, '../fixtures/typical')
+    })
+
     expect(global.fail).toHaveBeenCalledTimes(1)
-    expect(global.fail).toHaveBeenLastCalledWith("guid is inconsistent across platforms. It is c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0 in android/manifest and c3d987a8-8bd4-42cd-a3e4-2a75952d1ea1 in ios/manifest")
+    expect(global.fail).toHaveBeenLastCalledWith("SDK version used to build on Jenkins (8.3.1.GA) is not >= minSDK of 9.0.0 declared in android/manifest")
+  })
+
+  it("no errors when declared sdkVersion in Jenkinsfile is >= than minSDK", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: ['Jenkinsfile'],
+        diffForFile: mockDiff(
+          "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '8.3.1.GA'\n}\n",
+          "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '9.0.0.v20200130113429'\n}\n",
+        )
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, '../fixtures/typical')
+    })
+
+    expect(global.fail).toHaveBeenCalledTimes(0)
+    expect(global.warn).toHaveBeenCalledTimes(0)
+  })
+
+  it("fails when declared sdkVersion in ios/titanium.xcconfig is less than minSDK", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: ['ios/titanium.xcconfig'],
+        diffForFile: mockDiff(
+          "TITANIUM_SDK_VERSION = 8.1.1.GA\n",
+          "TITANIUM_SDK_VERSION = 8.3.1.GA\n",
+        )
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, '../fixtures/typical')
+    })
+
+    expect(global.fail).toHaveBeenCalledTimes(1)
+    expect(global.fail).toHaveBeenLastCalledWith("SDK version used to build in XCode (8.3.1.GA in ios/titanium.xcconfig) is not >= minSDK of 9.0.0 declared in android/manifest")
+  })
+
+  it("warns when declared sdkVersion in ios/titanium.xcconfig differs from Jenkinsfile", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: ['ios/titanium.xcconfig'],
+        diffForFile: mockDiff(
+          "TITANIUM_SDK_VERSION = 8.1.1.GA\n",
+          "TITANIUM_SDK_VERSION = 9.0.1.GA\n",
+        )
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, '../fixtures/sdk_differs')
+    })
+
+    expect(global.warn).toHaveBeenCalledTimes(1)
+    expect(global.warn).toHaveBeenLastCalledWith("SDK version declared in Jenkinsfile (9.0.0.v20200130075800) does not match iOS' titanium.xcconfig value (9.0.1.GA)")
   })
 })
