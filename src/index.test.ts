@@ -241,4 +241,42 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenCalledTimes(1)
     expect(global.fail).toHaveBeenLastCalledWith("platform value was android in ios/manifest but should be iphone")
   })
+
+  it("flags when moduleid is different across platforms", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: []
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, '../fixtures/moduleid_differs')
+    })
+
+    expect(global.fail).toHaveBeenCalledTimes(1)
+    expect(global.fail).toHaveBeenLastCalledWith("moduleid is inconsistent across platforms. It is ti.example.android in android/manifest and ti.example.iphone in ios/manifest")
+  })
+
+  it("flags when guid is different across platforms", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: []
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, '../fixtures/guid_differs')
+    })
+
+    expect(global.fail).toHaveBeenCalledTimes(1)
+    expect(global.fail).toHaveBeenLastCalledWith("guid is inconsistent across platforms. It is c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0 in android/manifest and c3d987a8-8bd4-42cd-a3e4-2a75952d1ea1 in ios/manifest")
+  })
 })
