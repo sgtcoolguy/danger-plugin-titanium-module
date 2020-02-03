@@ -429,4 +429,34 @@ describe("lint()", () => {
     expect(global.fail).not.toHaveBeenCalled()
     expect(global.warn).not.toHaveBeenCalled()
   })
+
+  it("fails when android/manifest minsdk is pre-release", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: ["android/manifest", "package.json"],
+        diffForFile: mockDiff(
+          "version: 1.2.2\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\nminsdk: 8.0.0\n",
+          "version: 2.0.0\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\nminsdk: 9.0.0.v20200130113429"
+        ),
+        JSONDiffForFile: mockJSONDiff({
+          version: {
+            before: "1.2.2",
+            after: "2.0.0"
+          }
+        }),
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, '../fixtures/typical')
+    })
+
+    expect(global.fail).toHaveBeenCalledTimes(1)
+    expect(global.fail).toHaveBeenLastCalledWith("minsdk value was 9.0.0.v20200130113429 in android/manifest, which is a non-GA release")
+    expect(global.warn).not.toHaveBeenCalled()
+  })
 })
