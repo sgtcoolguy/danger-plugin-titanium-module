@@ -1,6 +1,6 @@
 // Provides dev-time type structures for  `danger` - doesn't affect runtime.
 import { DangerDSLType } from "../node_modules/danger/distribution/dsl/DangerDSL"
-import { diff, gte } from "semver"
+import { diff, gte, prerelease } from "semver"
 import * as fs from "fs-extra"
 import * as path from "path"
 declare var danger: DangerDSLType
@@ -21,7 +21,8 @@ interface Manifest {
   architectures?: string,
   apiversion?: string,
   guid?: string,
-  commonjs?: string
+  commonjs?: string,
+  rawminsdk?: string, // the original value before we massaged it to be semver
 }
 
 function parseManifest(contents: string): Manifest {
@@ -37,6 +38,7 @@ function parseManifest(contents: string): Manifest {
 
   // Force a semver-compatible version string for minsdk (some modules use values like "6.2.2.GA", while most use "9.0.0" style)
   if (manifest.minsdk) {
+    manifest.rawminsdk = manifest.minsdk;
     manifest.minsdk = prepSDKVersion(manifest.minsdk);
   }
 
@@ -94,6 +96,10 @@ async function checkManifest(allFiles: string[], relativePath: string, platform:
   // general manifest sanity check
   if (currentManifest.platform !== platform) {
     fail(`platform value was ${currentManifest.platform} in ${relativePath} but should be ${platform}`);
+  }
+  // failf or non-GA minsdk versions
+  if (prerelease(currentManifest.minsdk)) {
+    fail(`minsdk value was ${currentManifest.rawminsdk} in ${relativePath}, which is a non-GA release`);
   }
   return currentManifest;
 }
