@@ -1,24 +1,26 @@
-import lint from "./index"
 import * as path from "path"
 // import { DangerDSLType } from "../node_modules/danger/distribution/dsl/DangerDSL"
-import { TextDiff, JSONDiff } from "../node_modules/danger/distribution/dsl/GitDSL";
+import { JSONDiff, TextDiff } from "../node_modules/danger/distribution/dsl/GitDSL"
+import lint from "./index"
 
 declare const global: any
 
 const mockDiff = (before: string, after: string) => {
-  const asyncContents: Promise<TextDiff | null> = new Promise((resolve, reject) => resolve({
-    before,
-    after,
-    diff: "",
-    added: "",
-    removed: "",
-  }))
-  return async (path: string): Promise<TextDiff | null> => asyncContents
+  const asyncContents: Promise<TextDiff | null> = new Promise((resolve, reject) =>
+    resolve({
+      before,
+      after,
+      diff: "",
+      added: "",
+      removed: "",
+    })
+  )
+  return async (relativePath: string): Promise<TextDiff | null> => asyncContents
 }
 
 const mockJSONDiff = (diff: JSONDiff) => {
   const asyncContents: Promise<JSONDiff | null> = new Promise((resolve, reject) => resolve(diff))
-  return async (path: string): Promise<JSONDiff | null> => asyncContents
+  return async (relativePath: string): Promise<JSONDiff | null> => asyncContents
 }
 
 describe("lint()", () => {
@@ -43,7 +45,7 @@ describe("lint()", () => {
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).not.toHaveBeenCalled()
@@ -60,7 +62,7 @@ describe("lint()", () => {
           "version: 1.2.2\nplatform: iphone\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n",
           "version: 1.2.2\nplatform: iphone\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n# something"
         ),
-      }
+      },
     }
 
     await lint()
@@ -80,7 +82,7 @@ describe("lint()", () => {
           "version: 1.2.2\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n",
           "version: 1.2.2\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n# something"
         ),
-      }
+      },
     }
 
     await lint()
@@ -105,14 +107,14 @@ describe("lint()", () => {
         JSONDiffForFile: mockJSONDiff({
           version: {
             before: "1.2.2",
-            after: "1.2.3"
-          }
+            after: "1.2.3",
+          },
         }),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).not.toHaveBeenCalled()
@@ -135,7 +137,7 @@ describe("lint()", () => {
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
@@ -158,14 +160,14 @@ describe("lint()", () => {
         JSONDiffForFile: mockJSONDiff({
           version: {
             before: "1.2.2",
-            after: "1.3.0"
-          }
-        })
+            after: "1.3.0",
+          },
+        }),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
@@ -184,16 +186,18 @@ describe("lint()", () => {
         diffForFile: mockDiff(
           "minsdk: 8.0.0\nversion: 1.2.2\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n",
           "minsdk: 9.0.0\nversion: 1.2.2\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n"
-        )
+        ),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
-    expect(global.fail).toHaveBeenLastCalledWith("version bump was None in android/manifest but should be Major, due to updated minsdk")
+    expect(global.fail).toHaveBeenLastCalledWith(
+      "version bump was None in android/manifest but should be Major, due to updated minsdk"
+    )
     expect(global.warn).not.toHaveBeenCalled()
   })
 
@@ -212,18 +216,20 @@ describe("lint()", () => {
         JSONDiffForFile: mockJSONDiff({
           version: {
             before: "1.2.2",
-            after: "1.3.0"
-          }
-        })
+            after: "1.3.0",
+          },
+        }),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
-    expect(global.fail).toHaveBeenLastCalledWith("version bump was Minor in android/manifest but should be Major, due to updated minsdk")
+    expect(global.fail).toHaveBeenLastCalledWith(
+      "version bump was Minor in android/manifest but should be Major, due to updated minsdk"
+    )
     expect(global.warn).not.toHaveBeenCalled()
   })
 
@@ -237,13 +243,13 @@ describe("lint()", () => {
         modified_files: ["ios/manifest"],
         diffForFile: mockDiff(
           "platform: iphone\nversion: 1.2.2\nminsdk: 8.0.0\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n",
-          "platform: android\nversion: 1.2.2\nminsdk: 8.0.0\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n",
-        )
+          "platform: android\nversion: 1.2.2\nminsdk: 8.0.0\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n"
+        ),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
@@ -258,16 +264,18 @@ describe("lint()", () => {
       },
       git: {
         created_files: [],
-        modified_files: []
+        modified_files: [],
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/moduleid_differs')
+      moduleRoot: path.join(__dirname, "../fixtures/moduleid_differs"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
-    expect(global.fail).toHaveBeenLastCalledWith("moduleid is inconsistent across platforms. It is ti.example.android in android/manifest and ti.example.iphone in ios/manifest")
+    expect(global.fail).toHaveBeenLastCalledWith(
+      "moduleid is inconsistent across platforms. It is ti.example.android in android/manifest and ti.example.iphone in ios/manifest"
+    )
     expect(global.warn).not.toHaveBeenCalled()
   })
 
@@ -278,16 +286,18 @@ describe("lint()", () => {
       },
       git: {
         created_files: [],
-        modified_files: []
+        modified_files: [],
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/guid_differs')
+      moduleRoot: path.join(__dirname, "../fixtures/guid_differs"),
     })
 
     expect(global.warn).toHaveBeenCalledTimes(1)
-    expect(global.warn).toHaveBeenLastCalledWith("guid is inconsistent across platforms. It is c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0 in android/manifest and c3d987a8-8bd4-42cd-a3e4-2a75952d1ea1 in ios/manifest")
+    expect(global.warn).toHaveBeenLastCalledWith(
+      "guid is inconsistent across platforms. It is c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0 in android/manifest and c3d987a8-8bd4-42cd-a3e4-2a75952d1ea1 in ios/manifest"
+    )
   })
 
   it("warns when no declared sdkVersion in Jenkinsfile", async () => {
@@ -297,20 +307,22 @@ describe("lint()", () => {
       },
       git: {
         created_files: [],
-        modified_files: ['Jenkinsfile'],
+        modified_files: ["Jenkinsfile"],
         diffForFile: mockDiff(
           "library 'pipeline-library'\nbuildModule {\n}\n",
-          "library 'pipeline-library'\nbuildModule {\n}\n",
-        )
+          "library 'pipeline-library'\nbuildModule {\n}\n"
+        ),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.warn).toHaveBeenCalledTimes(1)
-    expect(global.warn).toHaveBeenLastCalledWith("Was unable to determine SDK version used to build on Jenkins. Consider adding sdkVersion = '9.0.0' (or greater)")
+    expect(global.warn).toHaveBeenLastCalledWith(
+      "Was unable to determine SDK version used to build on Jenkins. Consider adding sdkVersion = '9.0.0' (or greater)"
+    )
     expect(global.fail).not.toHaveBeenCalled()
   })
 
@@ -321,20 +333,22 @@ describe("lint()", () => {
       },
       git: {
         created_files: [],
-        modified_files: ['Jenkinsfile'],
+        modified_files: ["Jenkinsfile"],
         diffForFile: mockDiff(
           "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '8.3.1.GA'\n}\n",
-          "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '8.3.1.GA'\n}\n",
-        )
+          "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '8.3.1.GA'\n}\n"
+        ),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
-    expect(global.fail).toHaveBeenLastCalledWith("SDK version used to build on Jenkins (8.3.1.GA) is not >= minSDK of 9.0.0 declared in android/manifest")
+    expect(global.fail).toHaveBeenLastCalledWith(
+      "SDK version used to build on Jenkins (8.3.1.GA) is not >= minSDK of 9.0.0 declared in android/manifest"
+    )
     expect(global.warn).not.toHaveBeenCalled()
   })
 
@@ -345,16 +359,16 @@ describe("lint()", () => {
       },
       git: {
         created_files: [],
-        modified_files: ['Jenkinsfile'],
+        modified_files: ["Jenkinsfile"],
         diffForFile: mockDiff(
           "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '8.3.1.GA'\n}\n",
-          "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '9.0.0.v20200130113429'\n}\n",
-        )
+          "library 'pipeline-library'\nbuildModule {\n  sdkVersion = '9.0.0.v20200130113429'\n}\n"
+        ),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).not.toHaveBeenCalled()
@@ -368,20 +382,19 @@ describe("lint()", () => {
       },
       git: {
         created_files: [],
-        modified_files: ['ios/titanium.xcconfig'],
-        diffForFile: mockDiff(
-          "TITANIUM_SDK_VERSION = 8.1.1.GA\n",
-          "TITANIUM_SDK_VERSION = 8.3.1.GA\n",
-        )
+        modified_files: ["ios/titanium.xcconfig"],
+        diffForFile: mockDiff("TITANIUM_SDK_VERSION = 8.1.1.GA\n", "TITANIUM_SDK_VERSION = 8.3.1.GA\n"),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
-    expect(global.fail).toHaveBeenLastCalledWith("SDK version used to build in XCode (8.3.1.GA in ios/titanium.xcconfig) is not >= minSDK of 9.0.0 declared in android/manifest")
+    expect(global.fail).toHaveBeenLastCalledWith(
+      "SDK version used to build in XCode (8.3.1.GA in ios/titanium.xcconfig) is not >= minSDK of 9.0.0 declared in android/manifest"
+    )
     expect(global.warn).not.toHaveBeenCalled()
   })
 
@@ -392,20 +405,19 @@ describe("lint()", () => {
       },
       git: {
         created_files: [],
-        modified_files: ['ios/titanium.xcconfig'],
-        diffForFile: mockDiff(
-          "TITANIUM_SDK_VERSION = 8.1.1.GA\n",
-          "TITANIUM_SDK_VERSION = 9.0.1.GA\n",
-        )
+        modified_files: ["ios/titanium.xcconfig"],
+        diffForFile: mockDiff("TITANIUM_SDK_VERSION = 8.1.1.GA\n", "TITANIUM_SDK_VERSION = 9.0.1.GA\n"),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/sdk_differs')
+      moduleRoot: path.join(__dirname, "../fixtures/sdk_differs"),
     })
 
     expect(global.warn).toHaveBeenCalledTimes(1)
-    expect(global.warn).toHaveBeenLastCalledWith("SDK version declared in Jenkinsfile (9.0.0.v20200130075800) does not match iOS' titanium.xcconfig value (9.0.1.GA)")
+    expect(global.warn).toHaveBeenLastCalledWith(
+      "SDK version declared in Jenkinsfile (9.0.0.v20200130075800) does not match iOS' titanium.xcconfig value (9.0.1.GA)"
+    )
     expect(global.fail).not.toHaveBeenCalled()
   })
 
@@ -414,7 +426,7 @@ describe("lint()", () => {
       github: { pr: { title: "Test" } },
       git: {
         created_files: [],
-        modified_files: ['android/manifest'],
+        modified_files: ["android/manifest"],
         diffForFile: mockDiff(
           "version: 1.2.2\nminsdk: 8.0.0\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n",
           "version: 1.2.2\nminsdk: 8.0.0.GA\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n"
@@ -423,7 +435,7 @@ describe("lint()", () => {
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).not.toHaveBeenCalled()
@@ -445,18 +457,52 @@ describe("lint()", () => {
         JSONDiffForFile: mockJSONDiff({
           version: {
             before: "1.2.2",
-            after: "2.0.0"
-          }
+            after: "2.0.0",
+          },
         }),
       },
     }
 
     await lint({
-      moduleRoot: path.join(__dirname, '../fixtures/typical')
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
     expect(global.fail).toHaveBeenCalledTimes(1)
-    expect(global.fail).toHaveBeenLastCalledWith("minsdk value was 9.0.0.v20200130113429 in android/manifest, which is a non-GA release")
+    expect(global.fail).toHaveBeenLastCalledWith(
+      "minsdk value was 9.0.0.v20200130113429 in android/manifest, which is a non-GA release"
+    )
+    expect(global.warn).not.toHaveBeenCalled()
+  })
+
+  it("no errors when android/manifest is bumped major and package.json is created", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: ["package.json"],
+        modified_files: ["android/manifest"],
+        diffForFile: mockDiff(
+          "version: 1.2.2\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\nminsdk: 8.0.0\n",
+          "version: 2.0.0\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\nminsdk: 9.0.0.v20200130113429"
+        ),
+        JSONDiffForFile: mockJSONDiff({
+          version: {
+            before: null,
+            after: "2.0.0",
+          },
+        }),
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
+    })
+
+    expect(global.fail).toHaveBeenCalledTimes(1)
+    expect(global.fail).toHaveBeenLastCalledWith(
+      "minsdk value was 9.0.0.v20200130113429 in android/manifest, which is a non-GA release"
+    )
     expect(global.warn).not.toHaveBeenCalled()
   })
 })
