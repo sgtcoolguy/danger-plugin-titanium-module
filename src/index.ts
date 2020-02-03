@@ -33,7 +33,12 @@ function parseManifest(contents: string): Manifest {
 			manifest[match[1].trim()] = match[2].trim();
     }
     // TODO: Also include the line number so we can do inline comments?
-	});
+  });
+
+  // Force a semver-compatible version string for minsdk (some modules use values like "6.2.2.GA", while most use "9.0.0" style)
+  if (manifest.minsdk) {
+    manifest.minsdk = prepSDKVersion(manifest.minsdk);
+  }
 
 	return manifest;
 }
@@ -219,7 +224,7 @@ export default async function lint(options?: LintOptions) {
   }
 
   // Between the platforms, which has the higher minSDK value?
-  // Note that we expect minSDk values to be vanilla x.y.z version strings
+  // Note that we expect minsdk values to be vanilla x.y.z version strings (we forced them to be!)
   const androidMinSDK = androidManifest && androidManifest.minsdk;
   const iosMinSDK = iosManifest && iosManifest.minsdk;
   let winningManifest = 'android/manifest'
