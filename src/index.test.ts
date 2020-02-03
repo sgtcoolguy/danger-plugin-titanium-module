@@ -5,6 +5,16 @@ import lint from "./index"
 
 declare const global: any
 
+interface TextDiffs {
+  [filename: string]: TextDiff
+}
+
+const mockMultipleDiff = (diffs: TextDiffs) => {
+  return async (relativePath: string): Promise<TextDiff | null> => {
+    return diffs[relativePath]
+  }
+}
+
 const mockDiff = (before: string, after: string) => {
   const asyncContents: Promise<TextDiff | null> = new Promise((resolve, reject) =>
     resolve({
@@ -503,6 +513,51 @@ describe("lint()", () => {
     expect(global.fail).toHaveBeenLastCalledWith(
       "minsdk value was 9.0.0.v20200130113429 in android/manifest, which is a non-GA release"
     )
+    expect(global.warn).not.toHaveBeenCalled()
+  })
+
+  it("no errors when both platforms version bumps at different levels", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: ["package.json"],
+        modified_files: ["android/manifest", "ios/manifest"],
+        diffForFile: mockMultipleDiff({
+          "android/manifest": {
+            before:
+              "version: 1.2.2\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\nminsdk: 8.0.0\n",
+            after:
+              "version: 2.0.0\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\nminsdk: 9.0.0.GA\n",
+            diff: "",
+            added: "",
+            removed: "",
+          },
+          "ios/manifest": {
+            before:
+              "version: 1.2.2\nplatform: iphone\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\nminsdk: 8.0.0\n",
+            after:
+              "version: 1.2.3\nplatform: iphone\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\nminsdk: 8.0.0\n",
+            diff: "",
+            added: "",
+            removed: "",
+          },
+        }),
+        JSONDiffForFile: mockJSONDiff({
+          version: {
+            before: "1.2.2",
+            after: "2.0.0",
+          },
+        }),
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
+    })
+
+    expect(global.fail).not.toHaveBeenCalled()
     expect(global.warn).not.toHaveBeenCalled()
   })
 })
