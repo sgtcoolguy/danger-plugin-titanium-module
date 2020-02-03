@@ -23,6 +23,7 @@ interface Manifest {
   guid?: string
   commonjs?: string
   rawminsdk?: string // the original value before we massaged it to be semver
+  versionChange?: VersionChange // we set this if we know it changed!
 }
 
 function parseManifest(contents: string): Manifest {
@@ -47,9 +48,9 @@ function parseManifest(contents: string): Manifest {
 }
 enum VersionChange {
   None,
-  Major,
-  Minor,
   Patch,
+  Minor,
+  Major,
 }
 
 function versionChange(before: string, after: string): VersionChange {
@@ -66,12 +67,7 @@ function versionChange(before: string, after: string): VersionChange {
   return VersionChange.None
 }
 
-async function checkManifest(
-  relativePath: string,
-  platform: string,
-  packageJsonBumped: VersionChange,
-  rootDir: string
-): Promise<Manifest | null> {
+async function checkManifest(relativePath: string, platform: string, rootDir: string): Promise<Manifest | null> {
   let currentManifest
   if (danger.git.modified_files.includes(relativePath)) {
     // manifest has changed
@@ -79,15 +75,7 @@ async function checkManifest(
     currentManifest = parseManifest(manifestDiff.after)
     const before = parseManifest(manifestDiff.before)
     const manifestVersionChangeType = versionChange(before.version, currentManifest.version)
-    if (manifestVersionChangeType !== VersionChange.None) {
-      // version changed in the android manifest!
-      if (manifestVersionChangeType !== packageJsonBumped) {
-        fail(
-          `version bump was ${VersionChange[manifestVersionChangeType]} in ${relativePath} but ${VersionChange[packageJsonBumped]} in package.json`
-        )
-      }
-    }
-
+    currentManifest.versionChange = manifestVersionChangeType
     // if minsdk changed, better be a major version bump!
     if (currentManifest.minsdk !== before.minsdk && manifestVersionChangeType !== VersionChange.Major) {
       fail(
@@ -105,6 +93,7 @@ async function checkManifest(
     // manifest wasn't edited, just check for sanity below
     try {
       currentManifest = parseManifest(await fs.readFile(path.join(rootDir, relativePath), "utf8"))
+      currentManifest.versionChange = VersionChange.None
     } catch (e) {
       fail(`${relativePath} does not exist`)
       return null
@@ -238,18 +227,36 @@ interface LintOptions {
   moduleRoot?: string
 }
 
+async function checkPackageJsonVersionBump(
+  androidManifest: Manifest | null,
+  iosManifest: Manifest | null,
+  iosManifestPath: string
+): Promise<void> {
+  const packageJsonBump = await getPackageJSONVersionChange()
+  let maxManifestChange = androidManifest ? androidManifest.versionChange : VersionChange.None
+  let manifestPath = "android/manifest"
+  if (iosManifest && iosManifest.versionChange > maxManifestChange) {
+    manifestPath = iosManifestPath
+    maxManifestChange = iosManifest.versionChange
+  }
+  if (maxManifestChange !== VersionChange.None && packageJsonBump !== maxManifestChange) {
+    fail(
+      `version bump was ${VersionChange[maxManifestChange]} in ${manifestPath} but ${VersionChange[packageJsonBump]} in package.json`
+    )
+  }
+}
+
 export default async function lint(options?: LintOptions) {
   const moduleRoot: string =
     options !== undefined && options.moduleRoot !== undefined ? options.moduleRoot! : process.cwd()
-  const packageJsonBumped = await getPackageJSONVersionChange()
 
-  const androidManifest = await checkManifest("android/manifest", "android", packageJsonBumped, moduleRoot)
+  const androidManifest = await checkManifest("android/manifest", "android", moduleRoot)
 
   let iosManifestPath = "iphone/manifest"
   if (!(await exists("iphone/manifest", moduleRoot))) {
     iosManifestPath = "ios/manifest"
   }
-  const iosManifest = await checkManifest(iosManifestPath, "iphone", packageJsonBumped, moduleRoot)
+  const iosManifest = await checkManifest(iosManifestPath, "iphone", moduleRoot)
 
   // check consistency across platforms
   if (iosManifest && androidManifest) {
@@ -266,6 +273,11 @@ export default async function lint(options?: LintOptions) {
       )
     }
     // TODO: warn if versions don't match?
+  }
+
+  // Make sure that the package.json gets bumped at the same level as the higher of the two platform bumps
+  if (iosManifest || androidManifest) {
+    await checkPackageJsonVersionBump(androidManifest, iosManifest, iosManifestPath)
   }
 
   // Between the platforms, which has the higher minSDK value?
