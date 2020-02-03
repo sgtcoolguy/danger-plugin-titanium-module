@@ -22,9 +22,7 @@
   "main": "dist/index.js",
   "types": "types/index.d.ts",
   "scripts": {
-    "precommit": "lint-staged",
     "commit": "git-cz",
-    "commitmsg": "validate-commit-msg",
     "build": "tsc",
     "test": "jest",
     "predocs": "rm -rf docs/",
@@ -89,5 +87,11 @@
   "dependencies": {
     "fs-extra": "^8.1.0",
     "semver": "^7.1.1"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "validate-commit-msg",
+      "pre-commit": "lint-staged"
+    }
   }
 }
