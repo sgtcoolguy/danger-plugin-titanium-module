@@ -17,3 +17,5 @@ README.md
 fixtures/
 tslint.json
 tsconfig.json
+
+dist/*.test.ts
