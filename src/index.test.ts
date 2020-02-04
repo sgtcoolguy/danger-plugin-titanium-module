@@ -385,7 +385,30 @@ describe("lint()", () => {
     expect(global.warn).not.toHaveBeenCalled()
   })
 
-  it("fails when declared sdkVersion in ios/titanium.xcconfig is less than minSDK", async () => {
+  it("fails when declared sdkVersion in ios/titanium.xcconfig is less than ios minSDK", async () => {
+    global.danger = {
+      github: {
+        pr: { title: "Test" },
+      },
+      git: {
+        created_files: [],
+        modified_files: ["ios/titanium.xcconfig"],
+        diffForFile: mockDiff("TITANIUM_SDK_VERSION = 8.1.1.GA\n", "TITANIUM_SDK_VERSION = 6.2.2.GA\n"),
+      },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, "../fixtures/typical"),
+    })
+
+    expect(global.fail).toHaveBeenCalledTimes(1)
+    expect(global.fail).toHaveBeenLastCalledWith(
+      "SDK version used to build in XCode (6.2.2.GA in ios/titanium.xcconfig) is not >= minSDK of 7.0.0 declared in ios/manifest"
+    )
+    expect(global.warn).not.toHaveBeenCalled()
+  })
+
+  it("no errors when sdkVersion in ios/titanium.xcconfig is < android minSDK but > ios minSDK", async () => {
     global.danger = {
       github: {
         pr: { title: "Test" },
@@ -401,10 +424,7 @@ describe("lint()", () => {
       moduleRoot: path.join(__dirname, "../fixtures/typical"),
     })
 
-    expect(global.fail).toHaveBeenCalledTimes(1)
-    expect(global.fail).toHaveBeenLastCalledWith(
-      "SDK version used to build in XCode (8.3.1.GA in ios/titanium.xcconfig) is not >= minSDK of 9.0.0 declared in android/manifest"
-    )
+    expect(global.fail).not.toHaveBeenCalled()
     expect(global.warn).not.toHaveBeenCalled()
   })
 
