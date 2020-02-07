@@ -127,11 +127,22 @@ async function getPackageJSONVersionChange(): Promise<VersionChange> {
   return VersionChange.None
 }
 
-async function exists(relativePath: string, rootDir: string): Promise<boolean> {
+async function fileExists(relativePath: string, rootDir: string): Promise<boolean> {
   if (danger.git.modified_files.includes(relativePath) || danger.git.created_files.includes(relativePath)) {
     return true
   }
-  return await fs.pathExists(path.join(rootDir, relativePath))
+  return fs.pathExists(path.join(rootDir, relativePath))
+}
+
+async function dirExists(relativePath: string, rootDir: string): Promise<boolean> {
+  // check if any of them have the prefix of the expected dir!
+  if (danger.git.created_files.find(f => f.startsWith(relativePath + "/"))) {
+    return true
+  }
+  if (danger.git.modified_files.find(f => f.startsWith(relativePath + "/"))) {
+    return true
+  }
+  return fs.pathExists(path.join(rootDir, relativePath))
 }
 
 function prepSDKVersion(sdkVersion: string): string {
@@ -250,13 +261,15 @@ export default async function lint(options?: LintOptions) {
   const moduleRoot: string =
     options !== undefined && options.moduleRoot !== undefined ? options.moduleRoot! : process.cwd()
 
-  const androidManifest = await checkManifest("android/manifest", "android", moduleRoot)
+  const androidFolderExists = await dirExists("android", moduleRoot)
+  const androidManifest = androidFolderExists ? await checkManifest("android/manifest", "android", moduleRoot) : null
 
-  let iosManifestPath = "iphone/manifest"
-  if (!(await exists("iphone/manifest", moduleRoot))) {
-    iosManifestPath = "ios/manifest"
-  }
-  const iosManifest = await checkManifest(iosManifestPath, "iphone", moduleRoot)
+  const iosFolderExists = await dirExists("ios", moduleRoot)
+  const iphoneFolderExists = await dirExists("iphone", moduleRoot)
+
+  const iosManifestPath = iosFolderExists ? "ios/manifest" : "iphone/manifest"
+  const iosManifest =
+    iosFolderExists || iphoneFolderExists ? await checkManifest(iosManifestPath, "iphone", moduleRoot) : null
 
   // check consistency across platforms
   if (iosManifest && androidManifest) {
@@ -282,14 +295,14 @@ export default async function lint(options?: LintOptions) {
 
   let titaniumXCConfigSDKVersion
   if (iosManifest) {
-    if (await exists("ios/titanium.xcconfig", moduleRoot)) {
+    if (await fileExists("ios/titanium.xcconfig", moduleRoot)) {
       titaniumXCConfigSDKVersion = await checkTitaniumXCConfig(
         "ios/titanium.xcconfig",
         iosManifest.minsdk,
         iosManifestPath,
         moduleRoot
       )
-    } else if (await exists("iphone/titanium.xcconfig", moduleRoot)) {
+    } else if (await fileExists("iphone/titanium.xcconfig", moduleRoot)) {
       titaniumXCConfigSDKVersion = await checkTitaniumXCConfig(
         "iphone/titanium.xcconfig",
         iosManifest.minsdk,
@@ -306,25 +319,22 @@ export default async function lint(options?: LintOptions) {
   let winningManifest = "android/manifest"
   let maxMinSDK = androidMinSDK
   if (iosMinSDK) {
-    if (maxMinSDK === undefined || gte(iosMinSDK, maxMinSDK)) {
+    if (maxMinSDK === undefined || maxMinSDK === null || gte(iosMinSDK, maxMinSDK)) {
       maxMinSDK = iosMinSDK
       winningManifest = iosManifestPath
     }
   }
 
-  // FIXME: Should it fail if the ios build is set to use an older version that the minsdk set in android's manifest?
-  // Doesn't feel like it should. It should compare only to the ios manifest!
-
   if (maxMinSDK) {
     // Verify build/test/ci SDK version is > minSDK and aligns across files!
     let jenkinsSDKVersion
-    if (await exists("Jenkinsfile", moduleRoot)) {
+    if (await fileExists("Jenkinsfile", moduleRoot)) {
       jenkinsSDKVersion = await checkJenkinsfile(maxMinSDK, winningManifest, moduleRoot)
     }
 
     // TODO: Check that test/unit/karma.unit.config sdkVersion value is > minsdk in manifest!
 
-    // TODO: Check that they all align!
+    // Check that they all align!
     if (jenkinsSDKVersion && titaniumXCConfigSDKVersion && jenkinsSDKVersion !== titaniumXCConfigSDKVersion) {
       warn(
         `SDK version declared in Jenkinsfile (${jenkinsSDKVersion}) does not match iOS' titanium.xcconfig value (${titaniumXCConfigSDKVersion})`
