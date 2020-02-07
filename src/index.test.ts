@@ -62,11 +62,39 @@ describe("lint()", () => {
     expect(global.warn).not.toHaveBeenCalled()
   })
 
+  it("no warnings or errors for android-only module project", async () => {
+    global.danger = {
+      github: { pr: { title: "Test" } },
+      git: { created_files: [], modified_files: [] },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, "../fixtures/android_only"),
+    })
+
+    expect(global.fail).not.toHaveBeenCalled()
+    expect(global.warn).not.toHaveBeenCalled()
+  })
+
+  it("no warnings or errors for ios-only module project", async () => {
+    global.danger = {
+      github: { pr: { title: "Test" } },
+      git: { created_files: [], modified_files: [] },
+    }
+
+    await lint({
+      moduleRoot: path.join(__dirname, "../fixtures/ios_only"),
+    })
+
+    expect(global.fail).not.toHaveBeenCalled()
+    expect(global.warn).not.toHaveBeenCalled()
+  })
+
   it("fails if android/manifest doesn't exist", async () => {
     global.danger = {
       github: { pr: { title: "Test" } },
       git: {
-        created_files: [],
+        created_files: ["android/.project"],
         modified_files: ["ios/manifest"],
         diffForFile: mockDiff(
           "version: 1.2.2\nplatform: iphone\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n",
@@ -86,7 +114,7 @@ describe("lint()", () => {
     global.danger = {
       github: { pr: { title: "Test" } },
       git: {
-        created_files: [],
+        created_files: ["ios/.project"],
         modified_files: ["android/manifest"],
         diffForFile: mockDiff(
           "version: 1.2.2\nplatform: android\nmoduleid: ti.example\nguid: c3d987a8-8bd4-42cd-a3e4-2a75952d1ea0\n",
