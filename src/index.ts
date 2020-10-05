@@ -79,14 +79,14 @@ async function checkManifest(relativePath: string, platform: string, rootDir: st
     // if minsdk changed, better be a major version bump!
     if (currentManifest.minsdk !== before.minsdk && manifestVersionChangeType !== VersionChange.Major) {
       fail(
-        `version bump was ${VersionChange[manifestVersionChangeType]} in ${relativePath} but should be Major, due to updated minsdk`
+        `version bump was ${VersionChange[manifestVersionChangeType]} in ${relativePath} but should be Major, due to updated minsdk`,
       )
     }
 
     // if apiversion changed, better be a major version bump!
     if (currentManifest.apiversion !== before.apiversion && manifestVersionChangeType !== VersionChange.Major) {
       fail(
-        `version bump was ${VersionChange[manifestVersionChangeType]} in ${relativePath} but should be Major, due to updated apiversion`
+        `version bump was ${VersionChange[manifestVersionChangeType]} in ${relativePath} but should be Major, due to updated apiversion`,
       )
     }
   } else {
@@ -184,14 +184,14 @@ async function checkJenkinsfile(minSDK: string, winningManifest: string, rootDir
     if (!gte(semverCompatVersion, `${minSDK}-alpha.0`)) {
       //  uh-oh, we're trying to build against an sdk that is not >= the stated minSDK
       fail(
-        `SDK version used to build on Jenkins (${origSDKVersion}) is not >= minSDK of ${minSDK} declared in ${winningManifest}`
+        `SDK version used to build on Jenkins (${origSDKVersion}) is not >= minSDK of ${minSDK} declared in ${winningManifest}`,
       )
     }
     return origSDKVersion
   }
 
   warn(
-    `Was unable to determine SDK version used to build on Jenkins. Consider adding sdkVersion = '${minSDK}' (or greater)`
+    `Was unable to determine SDK version used to build on Jenkins. Consider adding sdkVersion = '${minSDK}' (or greater)`,
   )
   return null
 }
@@ -200,7 +200,7 @@ async function checkTitaniumXCConfig(
   relativePath: string,
   minSDK: string,
   winningManifest: string,
-  rootDir: string
+  rootDir: string,
 ): Promise<string | null> {
   // Check that titanium.xcconfig TITANIUM_SDK_VERSION value is > minsdk in manifest!
   let contents: string
@@ -219,14 +219,14 @@ async function checkTitaniumXCConfig(
     if (!gte(semverCompatVersion, `${minSDK}-alpha.0`)) {
       //  uh-oh, we're trying to build against an sdk that is not >= the stated minSDK
       fail(
-        `SDK version used to build in XCode (${origSDKVersion} in ${relativePath}) is not >= minSDK of ${minSDK} declared in ${winningManifest}`
+        `SDK version used to build in XCode (${origSDKVersion} in ${relativePath}) is not >= minSDK of ${minSDK} declared in ${winningManifest}`,
       )
     }
     return origSDKVersion
   }
 
   warn(
-    `Was unable to determine SDK version referenced in ${relativePath}. Consider adding TITANIUM_SDK_VERSION = ${minSDK} (or greater)`
+    `Was unable to determine SDK version referenced in ${relativePath}. Consider adding TITANIUM_SDK_VERSION = ${minSDK} (or greater)`,
   )
   return null
 }
@@ -241,7 +241,7 @@ interface LintOptions {
 async function checkPackageJsonVersionBump(
   androidManifest: Manifest | null,
   iosManifest: Manifest | null,
-  iosManifestPath: string
+  iosManifestPath: string,
 ): Promise<void> {
   const packageJsonBump = await getPackageJSONVersionChange()
   let maxManifestChange = androidManifest ? androidManifest.versionChange : VersionChange.None
@@ -252,7 +252,7 @@ async function checkPackageJsonVersionBump(
   }
   if (maxManifestChange !== VersionChange.None && packageJsonBump !== maxManifestChange) {
     fail(
-      `version bump was ${VersionChange[maxManifestChange]} in ${manifestPath} but ${VersionChange[packageJsonBump]} in package.json`
+      `version bump was ${VersionChange[maxManifestChange]} in ${manifestPath} but ${VersionChange[packageJsonBump]} in package.json`,
     )
   }
 }
@@ -276,13 +276,13 @@ export default async function lint(options?: LintOptions) {
     // Verify the moduleid match across platforms
     if (androidManifest.moduleid !== iosManifest.moduleid) {
       fail(
-        `moduleid is inconsistent across platforms. It is ${androidManifest.moduleid} in android/manifest and ${iosManifest.moduleid} in ${iosManifestPath}`
+        `moduleid is inconsistent across platforms. It is ${androidManifest.moduleid} in android/manifest and ${iosManifest.moduleid} in ${iosManifestPath}`,
       )
     }
     // Verify the guid match across platforms
     if (androidManifest.guid !== iosManifest.guid) {
       warn(
-        `guid is inconsistent across platforms. It is ${androidManifest.guid} in android/manifest and ${iosManifest.guid} in ${iosManifestPath}`
+        `guid is inconsistent across platforms. It is ${androidManifest.guid} in android/manifest and ${iosManifest.guid} in ${iosManifestPath}`,
       )
     }
     // TODO: warn if versions don't match?
@@ -300,14 +300,14 @@ export default async function lint(options?: LintOptions) {
         "ios/titanium.xcconfig",
         iosManifest.minsdk,
         iosManifestPath,
-        moduleRoot
+        moduleRoot,
       )
     } else if (await fileExists("iphone/titanium.xcconfig", moduleRoot)) {
       titaniumXCConfigSDKVersion = await checkTitaniumXCConfig(
         "iphone/titanium.xcconfig",
         iosManifest.minsdk,
         iosManifestPath,
-        moduleRoot
+        moduleRoot,
       )
     }
   }
@@ -337,7 +337,7 @@ export default async function lint(options?: LintOptions) {
     // Check that they all align!
     if (jenkinsSDKVersion && titaniumXCConfigSDKVersion && jenkinsSDKVersion !== titaniumXCConfigSDKVersion) {
       warn(
-        `SDK version declared in Jenkinsfile (${jenkinsSDKVersion}) does not match iOS' titanium.xcconfig value (${titaniumXCConfigSDKVersion})`
+        `SDK version declared in Jenkinsfile (${jenkinsSDKVersion}) does not match iOS' titanium.xcconfig value (${titaniumXCConfigSDKVersion})`,
       )
     }
   }
