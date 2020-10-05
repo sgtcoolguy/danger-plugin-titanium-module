@@ -16,7 +16,7 @@
   "keywords": [
     "danger",
     "danger-plugin",
-    "eslint"
+    "titanium"
   ],
   "version": "0.0.7",
   "main": "dist/index.js",
